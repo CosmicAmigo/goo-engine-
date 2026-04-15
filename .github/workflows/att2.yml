@@ -15,21 +15,24 @@ jobs:
       - name: Download Libs
         shell: cmd
         run: |
-          :: Create the lib folder exactly where the log said it was missing
-          mkdir D:\a\goo-engine\lib
-          cd D:\a\goo-engine\lib
-          :: Export the files directly into that folder
-          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --force --quiet
+          :: Create the exact folder the error is asking for
+          mkdir "D:\a\goo-engine-\lib\win64_vc15"
+          
+          :: Download directly into that folder
+          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force
           
       - name: Build
         shell: cmd
-        run: call make.bat release
+        run: |
+          cd %GITHUB_WORKSPACE%
+          call make.bat release
 
       - name: Prepare Shareable Zip
         shell: cmd
         run: |
           mkdir Goo_Dist
-          xcopy /E /I D:\a\goo-engine\build_windows_Release_x64_vc17\bin\Release\* .\Goo_Dist\
+          :: Added the dash after 'goo-engine' to match your runner's path
+          xcopy /E /I D:\a\goo-engine-\build_windows_Release_x64_vc17\bin\Release\* .\Goo_Dist\
           powershell Compress-Archive -Path .\Goo_Dist\* -DestinationPath GooEngine_v3.6.zip
           
       - name: Upload Artifact
