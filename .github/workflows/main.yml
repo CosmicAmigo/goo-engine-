@@ -1,0 +1,46 @@
+name: Build Goo Engine v3.6
+on: 
+  workflow_dispatch: # This lets you start the build manually from the "Actions" tab
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Goo Engine
+        uses: actions/checkout@v4
+        with:
+          repository: dillongoostudios/goo-engine # Points to the source
+          ref: goo-engine-v3.6-release            # Force it to grab 3.6
+          path: goo-engine
+          
+      - name: Install Subversion
+        run: choco install svn -y
+
+      - name: Download Libraries (The Heavy Part)
+        shell: cmd
+        run: |
+          mkdir lib
+          cd lib
+          :: This downloads the pre-compiled libs directly to GitHub's server
+          svn checkout https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/windows_vc17
+          
+      - name: Build Engine
+        shell: cmd
+        run: |
+          cd goo-engine
+          :: 'make release' is smaller and faster than 'make full'
+          call make.bat release
+
+      - name: Prepare Shareable Zip
+        shell: cmd
+        run: |
+          mkdir GooEngine_Build
+          :: Copy only the necessary files for the engine to run
+          xcopy /E /I .\build_windows_Release_x64_vc17\bin\Release\* .\GooEngine_Build\
+          powershell Compress-Archive -Path .\GooEngine_Build\* -DestinationPath GooEngine_v3.6_Windows.zip
+
+      - name: Upload Finished Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Goo-Engine-v3.6-Executable
+          path: GooEngine_v3.6_Windows.zip
