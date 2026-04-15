@@ -15,11 +15,17 @@ jobs:
       - name: Download Libs
         shell: cmd
         run: |
-          :: Create the exact folder the error is asking for
           mkdir "D:\a\goo-engine-\lib\win64_vc15"
           
-          :: Download directly into that folder
-          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force
+          :: Try to download, if it fails, wait 1 minute and try again (up to 3 times)
+          for /l %%x in (1, 1, 3) do (
+            svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force && goto :success
+            echo "Server busy (429). Waiting 60 seconds..."
+            timeout /t 60
+          )
+          exit /b 1
+          :success
+          echo "Download complete!"
           
       - name: Build
         shell: cmd
