@@ -1,0 +1,41 @@
+name: Build Goo Engine v3.6
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Current Branch
+        uses: actions/checkout@v4
+        # No extra parameters needed; it defaults to the current branch/repo
+
+      - name: Install Subversion
+        run: choco install svn -y
+
+      - name: Download Libraries
+        shell: cmd
+        run: |
+          mkdir ..\lib
+          cd ..\lib
+          :: Using the confirmed path for 3.6
+          svn checkout https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 --quiet
+          
+      - name: Build Engine
+        shell: cmd
+        run: |
+          :: The make.bat expects 'lib' to be one folder up from the source
+          call make.bat release
+
+      - name: Prepare Shareable Zip
+        shell: cmd
+        run: |
+          mkdir GooEngine_Build
+          xcopy /E /I ..\build_windows_Release_x64_vc17\bin\Release\* .\GooEngine_Build\
+          powershell Compress-Archive -Path .\GooEngine_Build\* -DestinationPath GooEngine_v3.6_Windows.zip
+
+      - name: Upload Finished Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Goo-Engine-v3.6-Executable
+          path: GooEngine_v3.6_Windows.zip
