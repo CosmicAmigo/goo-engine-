@@ -13,13 +13,14 @@ jobs:
       - name: Install Subversion
         run: choco install svn -y
 
-      - name: Download Libraries
+      - name: Download Libraries (Low Impact Mode)
         shell: cmd
         run: |
           mkdir ..\lib
           cd ..\lib
-          :: Using the confirmed path for 3.6
-          svn checkout https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 --quiet
+          :: 'export' is much lighter than 'checkout' as it ignores metadata
+          :: We also remove '--quiet' temporarily so we can see if it's actually moving
+          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --force
           
       - name: Build Engine
         shell: cmd
