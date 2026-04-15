@@ -6,6 +6,16 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
+      - name: Maximize Disk Space
+        shell: pwsh
+        run: |
+          # Removing heavy pre-installed tools to give Blender ~30GB of extra room
+          Write-Host "Cleaning up disk space..."
+          Remove-Item -Recurse -Force "C:\Program Files\dotnet" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\Program Files (x86)\Microsoft SDKs" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\android" -ErrorAction SilentlyContinue
+          Write-Host "Cleanup complete."
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -15,34 +25,39 @@ jobs:
       - name: Download Libs
         shell: cmd
         run: |
-          mkdir "D:\a\goo-engine-\lib\win64_vc15"
+          :: Create the folder exactly where the error log said it wanted it
+          if not exist "D:\a\goo-engine-\lib\win64_vc15" mkdir "D:\a\goo-engine-\lib\win64_vc15"
           
-          :: Try to download, if it fails, wait 1 minute and try again (up to 3 times)
+          :: Download with a retry loop in case of 429 errors
           for /l %%x in (1, 1, 3) do (
-            svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force && goto :success
-            echo "Server busy (429). Waiting 60 seconds..."
+            svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force --quiet && goto :success
+            echo "Server busy (429). Waiting 60 seconds before retry %%x..."
             timeout /t 60
           )
           exit /b 1
           :success
-          echo "Download complete!"
-          
-      - name: Build
+          echo "Libraries downloaded successfully."
+
+      - name: Build Goo Engine
         shell: cmd
         run: |
-          cd %GITHUB_WORKSPACE%
+          :: Navigate to source and build
+          cd D:\a\goo-engine-\goo-engine-
           call make.bat release
 
       - name: Prepare Shareable Zip
+        if: success()
         shell: cmd
         run: |
           mkdir Goo_Dist
-          :: Added the dash after 'goo-engine' to match your runner's path
-          xcopy /E /I D:\a\goo-engine-\build_windows_Release_x64_vc17\bin\Release\* .\Goo_Dist\
+          :: Copy the built files (using the dash-named path from your logs)
+          xcopy /E /I D:\a\goo-engine-\build_windows_Release_x64_vc17_Release\bin\Release\* .\Goo_Dist\
           powershell Compress-Archive -Path .\Goo_Dist\* -DestinationPath GooEngine_v3.6.zip
-          
+
       - name: Upload Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: GooEngine-Windows-Build
           path: GooEngine_v3.6.zip
+          retention-days: 7
