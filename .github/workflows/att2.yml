@@ -12,37 +12,24 @@ jobs:
       - name: Install SVN
         run: choco install svn -y
 
-      - name: Download Libs (Resilient Mode)
+      - name: Download Libs
         shell: cmd
         run: |
-          mkdir ..\lib
-          cd ..\lib
-          :: We use a loop to retry if the server hits us with a 429
-          set max_retries=5
-          set count=0
-          
-          :loop
+          :: Create the lib folder exactly where the log said it was missing
+          mkdir D:\a\goo-engine\lib
+          cd D:\a\goo-engine\lib
+          :: Export the files directly into that folder
           svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --force --quiet
-          if %errorlevel% neq 0 (
-              set /a count+=1
-              if %count% geq %max_retries% (
-                  echo "Failed after %max_retries% attempts."
-                  exit /b 1
-              )
-              echo "Server busy (429). Waiting 60 seconds before retry %count%..."
-              timeout /t 60
-              goto loop
-          )
           
       - name: Build
         shell: cmd
         run: call make.bat release
 
-      - name: Zip and Upload
+      - name: Prepare Shareable Zip
         shell: cmd
         run: |
           mkdir Goo_Dist
-          xcopy /E /I ..\build_windows_Release_x64_vc17\bin\Release\* .\Goo_Dist\
+          xcopy /E /I D:\a\goo-engine\build_windows_Release_x64_vc17\bin\Release\* .\Goo_Dist\
           powershell Compress-Archive -Path .\Goo_Dist\* -DestinationPath GooEngine_v3.6.zip
           
       - name: Upload Artifact
