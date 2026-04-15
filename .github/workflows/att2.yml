@@ -6,37 +6,32 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: Checkout Current Branch
+      - name: Checkout Code
         uses: actions/checkout@v4
-        # No extra parameters needed; it defaults to the current branch/repo
 
-      - name: Install Subversion
+      - name: Install SVN
         run: choco install svn -y
 
-      - name: Download Libraries (Low Impact Mode)
+      - name: Download Libs
         shell: cmd
         run: |
           mkdir ..\lib
           cd ..\lib
-          :: 'export' is much lighter than 'checkout' as it ignores metadata
-          :: We also remove '--quiet' temporarily so we can see if it's actually moving
           svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --force
           
-      - name: Build Engine
+      - name: Build
+        shell: cmd
+        run: call make.bat release
+
+      - name: Zip and Upload
         shell: cmd
         run: |
-          :: The make.bat expects 'lib' to be one folder up from the source
-          call make.bat release
-
-      - name: Prepare Shareable Zip
-        shell: cmd
-        run: |
-          mkdir GooEngine_Build
-          xcopy /E /I ..\build_windows_Release_x64_vc17\bin\Release\* .\GooEngine_Build\
-          powershell Compress-Archive -Path .\GooEngine_Build\* -DestinationPath GooEngine_v3.6_Windows.zip
-
-      - name: Upload Finished Build
+          mkdir Goo_Dist
+          xcopy /E /I ..\build_windows_Release_x64_vc17\bin\Release\* .\Goo_Dist\
+          powershell Compress-Archive -Path .\Goo_Dist\* -DestinationPath GooEngine_v3.6.zip
+          
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Goo-Engine-v3.6-Executable
-          path: GooEngine_v3.6_Windows.zip
+          name: GooEngine-Windows-Build
+          path: GooEngine_v3.6.zip
