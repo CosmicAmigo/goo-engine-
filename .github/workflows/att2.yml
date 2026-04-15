@@ -12,12 +12,27 @@ jobs:
       - name: Install SVN
         run: choco install svn -y
 
-      - name: Download Libs
+      - name: Download Libs (Resilient Mode)
         shell: cmd
         run: |
           mkdir ..\lib
           cd ..\lib
-          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --force
+          :: We use a loop to retry if the server hits us with a 429
+          set max_retries=5
+          set count=0
+          
+          :loop
+          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --force --quiet
+          if %errorlevel% neq 0 (
+              set /a count+=1
+              if %count% geq %max_retries% (
+                  echo "Failed after %max_retries% attempts."
+                  exit /b 1
+              )
+              echo "Server busy (429). Waiting 60 seconds before retry %count%..."
+              timeout /t 60
+              goto loop
+          )
           
       - name: Build
         shell: cmd
