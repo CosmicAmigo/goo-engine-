@@ -25,22 +25,15 @@ jobs:
       - name: Download Libs
         shell: cmd
         run: |
+          :: Create the folder
           if not exist "D:\a\goo-engine-\lib\win64_vc15" mkdir "D:\a\goo-engine-\lib\win64_vc15"
+          cd /d "D:\a\goo-engine-\lib\win64_vc15"
+
+          :: Initialize a sparse checkout to reduce initial request load
+          svn checkout https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 . --depth empty
           
-          :: Attempt 1
-          svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force --quiet || (
-            echo "Server busy. Waiting 90 seconds..."
-            powershell -Command "Start-Sleep -s 90"
-            
-            :: Attempt 2
-            svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force --quiet || (
-              echo "Still busy. Final wait 120 seconds..."
-              powershell -Command "Start-Sleep -s 120"
-              
-              :: Final Attempt
-              svn export https://svn.blender.org/svnroot/bf-blender/tags/blender-3.6-release/lib/win64_vc15 "D:\a\goo-engine-\lib\win64_vc15" --force --quiet
-            )
-          )
+          :: Now pull the actual files. If it hits a 429, it will retry after a longer cooldown.
+          powershell -Command "for ($i=1; $i -le 5; $i++) { svn update --set-depth infinity --quiet; if ($LASTEXITCODE -eq 0) { break }; Write-Host 'Server throttled (429). Cooling down for 3 minutes...'; Start-Sleep -s 180 }"
 
       - name: Build Goo Engine
         shell: cmd
